@@ -1,17 +1,31 @@
-# מדריך למתחילים - SQLModel
+# מדריך למתחילים - SQLModel עם MySQL
 
 ## מהו SQLModel?
 SQLModel הוא ספרייה של Python המשלבת בין SQLAlchemy (לעבודה עם בסיסי נתונים) ל-Pydantic (לאימות נתונים). הוא מאפשר לנו לעבוד עם בסיסי נתונים בצורה קלה ובטוחה, תוך שימוש בקוד Python פשוט.
+
+במדריך זה נתמקד בעבודה עם **MySQL** - אחד ממסדי הנתונים הפופולריים ביותר בעולם.
 
 ---
 
 ## שלב 1: התקנה
 
-ראשית, נתקין את SQLModel:
+### 1.1 התקנת הספריות הנדרשות:
 
 ```bash
 pip install sqlmodel
+pip install pymysql
 ```
+
+**הסבר:**
+- `sqlmodel` - הספרייה העיקרית
+- `pymysql` - דרייבר לחיבור ל-MySQL מ-Python
+
+### 1.2 התקנת MySQL Server:
+
+אם עדיין אין לך MySQL מותקן:
+1. הורד מ-[MySQL Downloads](https://dev.mysql.com/downloads/mysql/)
+2. התקן ובחר סיסמה ל-root (זכור אותה!)
+3. MySQL ירוץ על `localhost:3306` כברירת מחדל
 
 ---
 
@@ -40,22 +54,53 @@ class Student(SQLModel, table=True):
 
 ---
 
-## שלב 3: יצירת בסיס נתונים והתחברות
+## שלב 3: יצירת בסיס נתונים והתחברות ל-MySQL
+
+### 3.1 יצירת בסיס נתונים ב-MySQL
+
+ראשית, צור בסיס נתונים חדש ב-MySQL:
+
+```python
+import mysql.connector
+
+# חיבור לשרת MySQL (ללא בסיס נתונים ספציפי)
+connection = mysql.connector.connect(
+    host='localhost',
+    user='root',
+    password='your_password'  # שנה לסיסמה שלך!
+)
+
+cursor = connection.cursor()
+cursor.execute("CREATE DATABASE IF NOT EXISTS school_db")
+print("✓ בסיס הנתונים נוצר!")
+
+cursor.close()
+connection.close()
+```
+
+### 3.2 חיבור עם SQLModel
 
 ```python
 from sqlmodel import SQLModel, create_engine
 
-# יצירת מנוע התחברות (SQLite בדוגמה זו)
-engine = create_engine("sqlite:///students.db")
+# מחרוזת חיבור ל-MySQL
+# פורמט: mysql+pymysql://username:password@host:port/database
+DATABASE_URL = "mysql+pymysql://root:your_password@localhost:3306/school_db"
+
+# יצירת מנוע התחברות
+engine = create_engine(DATABASE_URL, echo=True)  # echo=True להצגת SQL
 
 # יצירת כל הטבלאות
 SQLModel.metadata.create_all(engine)
+print("✓ הטבלאות נוצרו ב-MySQL!")
 ```
 
 **הסבר:**
-- `create_engine` - יוצר חיבור לבסיס הנתונים
-- `sqlite:///students.db` - בסיס נתונים מקומי (קובץ)
-- `create_all` - יוצר את כל הטבלאות שהגדרנו
+- `mysql+pymysql://` - פרוטוקול החיבור
+- `root:your_password` - שם משתמש וסיסמה
+- `localhost:3306` - כתובת השרת ופורט
+- `school_db` - שם בסיס הנתונים
+- `echo=True` - מציג את שאילתות ה-SQL שרצות (לדיבוג)
 
 ---
 
@@ -156,21 +201,39 @@ with Session(engine) as session:
 
 ---
 
-## שלב 8: דוגמה מלאה - מערכת ניהול תלמידים
+## שלב 8: דוגמה מלאה - מערכת ניהול תלמידים עם MySQL
 
 ```python
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from typing import Optional
+import mysql.connector
 
 # הגדרת המודל
 class Student(SQLModel, table=True):
+    __tablename__ = "students"  # שם הטבלה ב-MySQL
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(max_length=100)  # הגבלת אורך ל-MySQL
     age: int
     grade: float
 
-# יצירת בסיס נתונים
-engine = create_engine("sqlite:///school.db")
+# יצירת בסיס נתונים אם לא קיים
+def create_database():
+    connection = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='your_password'
+    )
+    cursor = connection.cursor()
+    cursor.execute("CREATE DATABASE IF NOT EXISTS school_db")
+    cursor.close()
+    connection.close()
+
+create_database()
+
+# חיבור ל-MySQL
+DATABASE_URL = "mysql+pymysql://root:your_password@localhost:3306/school_db"
+engine = create_engine(DATABASE_URL, echo=False)
 SQLModel.metadata.create_all(engine)
 
 # פונקציה להוספת תלמיד
@@ -247,26 +310,31 @@ from sqlmodel import SQLModel, Field, Relationship, create_engine, Session
 from typing import Optional, List
 
 class Classroom(SQLModel, table=True):
+    __tablename__ = "classrooms"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(max_length=50, unique=True)
     
     # קשר לתלמידים
     students: List["Student"] = Relationship(back_populates="classroom")
 
 class Student(SQLModel, table=True):
+    __tablename__ = "students"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(max_length=100)
     age: int
     grade: float
     
     # מפתח זר לכיתה
-    classroom_id: Optional[int] = Field(default=None, foreign_key="classroom.id")
+    classroom_id: Optional[int] = Field(default=None, foreign_key="classrooms.id")
     
     # קשר לכיתה
     classroom: Optional[Classroom] = Relationship(back_populates="students")
 
-# יצירת בסיס נתונים
-engine = create_engine("sqlite:///school_with_classes.db")
+# חיבור ל-MySQL
+DATABASE_URL = "mysql+pymysql://root:your_password@localhost:3306/school_db"
+engine = create_engine(DATABASE_URL, echo=False)
 SQLModel.metadata.create_all(engine)
 
 # שימוש
@@ -336,21 +404,91 @@ class Student(SQLModel, table=True):
 
 ---
 
-## שלב 11: בסיסי נתונים שונים
+## שלב 11: טיפים לעבודה עם MySQL
 
-### SQLite (קובץ מקומי):
+### 11.1 בדיקת חיבור
 ```python
-engine = create_engine("sqlite:///database.db")
+def test_connection():
+    try:
+        with Session(engine) as session:
+            # שאילתא פשוטה לבדיקה
+            session.exec(select(Student)).first()
+        print("✓ החיבור ל-MySQL תקין!")
+        return True
+    except Exception as e:
+        print(f"✗ שגיאת חיבור: {e}")
+        return False
 ```
 
-### MySQL:
+### 11.2 הצגת טבלאות קיימות
 ```python
-engine = create_engine("mysql://user:password@localhost/dbname")
+import mysql.connector
+
+def show_tables():
+    connection = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='your_password',
+        database='school_db'
+    )
+    cursor = connection.cursor()
+    cursor.execute("SHOW TABLES")
+    
+    print("\nטבלאות בבסיס הנתונים:")
+    for table in cursor:
+        print(f"  - {table[0]}")
+    
+    cursor.close()
+    connection.close()
 ```
 
-### PostgreSQL:
+### 11.3 ניקוי טבלה
 ```python
-engine = create_engine("postgresql://user:password@localhost/dbname")
+def clear_table(table_name: str):
+    """מחיקת כל הנתונים מטבלה (זהירות!)"""
+    with Session(engine) as session:
+        if table_name == "students":
+            session.query(Student).delete()
+        session.commit()
+        print(f"✓ הטבלה {table_name} נוקתה")
+```
+
+### 11.4 מחרוזות חיבור נפוצות ל-MySQL
+
+**חיבור מקומי:**
+```python
+DATABASE_URL = "mysql+pymysql://root:password@localhost:3306/database_name"
+```
+
+**חיבור מרוחק:**
+```python
+DATABASE_URL = "mysql+pymysql://user:password@192.168.1.100:3306/database_name"
+```
+
+**עם קידוד UTF-8:**
+```python
+DATABASE_URL = "mysql+pymysql://root:password@localhost:3306/database_name?charset=utf8mb4"
+```
+
+### 11.5 שגיאות נפוצות ופתרונות
+
+**שגיאה: "Access denied for user"**
+```python
+# בדוק שם משתמש וסיסמה
+DATABASE_URL = "mysql+pymysql://root:CORRECT_PASSWORD@localhost:3306/school_db"
+```
+
+**שגיאה: "Unknown database"**
+```python
+# צור את בסיס הנתונים קודם
+create_database()  # ראה שלב 3.1
+```
+
+**שגיאה: "Can't connect to MySQL server"**
+```python
+# ודא ש-MySQL Server רץ
+# Windows: services.msc -> MySQL
+# או התחל דרך MySQL Workbench
 ```
 
 ---
