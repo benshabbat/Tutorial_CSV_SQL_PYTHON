@@ -1,7 +1,7 @@
 import sqlite3
 
 class EmployeeDB:
-    def __init__(self, db_name='employees.db'):
+    def __init__(self, db_name='employees.csv'):
         self.conn = sqlite3.connect(db_name)
         self.cursor = self.conn.cursor()
         self.create_table()
