@@ -3,13 +3,15 @@
 ## תוכן עניינים
 1. [מבוא](#מבוא)
 2. [התקנה והכנה](#התקנה-והכנה)
-3. [יצירת קובץ CSV ראשון](#יצירת-קובץ-csv-ראשון)
-4. [קריאת נתונים מקובץ CSV](#קריאת-נתונים-מקובץ-csv)
-5. [יצירת מסד נתונים SQLite](#יצירת-מסד-נתונים-sqlite)
-6. [העברת נתונים מ-CSV ל-SQLite](#העברת-נתונים-מ-csv-ל-sqlite)
-7. [שאילתות בסיסיות](#שאילתות-בסיסיות)
-8. [ייצוא נתונים מ-SQLite ל-CSV](#ייצוא-נתונים-מ-sqlite-ל-csv)
-9. [תרגילים מעשיים](#תרגילים-מעשיים)
+3. [עבודה מתקדמת עם קבצי CSV](#עבודה-מתקדמת-עם-קבצי-csv)
+   - 3.1 [יצירת קובץ CSV](#יצירת-קובץ-csv)
+   - 3.2 [קריאת CSV - שיטות שונות](#קריאת-csv---שיטות-שונות)
+   - 3.3 [כתיבה ועדכון CSV](#כתיבה-ועדכון-csv)
+   - 3.4 [פעולות מתקדמות על CSV](#פעולות-מתקדמות-על-csv)
+   - 3.5 [סינון וחיפוש בקבצי CSV](#סינון-וחיפוש-בקבצי-csv)
+   - 3.6 [עבודה עם מספר קבצי CSV](#עבודה-עם-מספר-קבצי-csv)
+4. [אינטגרציה עם SQLite](#אינטגרציה-עם-sqlite)
+5. [תרגילים מעשיים](#תרגילים-מעשיים)
 
 ---
 
@@ -54,11 +56,13 @@ Python מגיע עם הספריות הבאות מובנות:
 
 ---
 
-## יצירת קובץ CSV ראשון
+## עבודה מתקדמת עם קבצי CSV
 
-### שלב 1: יצירת קובץ CSV באופן ידני
+### 3.1 יצירת קובץ CSV
 
-צור קובץ בשם `students.csv` עם התוכן הבא:
+#### שיטה 1: יצירה ידנית (טקסט רגיל)
+
+צור קובץ בשם `students.csv` עם עורך טקסט:
 
 ```csv
 id,name,age,grade,city
@@ -69,12 +73,12 @@ id,name,age,grade,city
 5,משה,20,95,נתניה
 ```
 
-### שלב 2: יצירת קובץ CSV עם Python
+#### שיטה 2: יצירה עם csv.writer
 
 ```python
 import csv
 
-# נתונים לדוגמה
+# נתונים כרשימה של רשימות
 students_data = [
     ['id', 'name', 'age', 'grade', 'city'],
     [1, 'דני', 20, 85, 'תל אביב'],
@@ -89,29 +93,92 @@ with open('students.csv', 'w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
     writer.writerows(students_data)
 
-print("קובץ CSV נוצר בהצלחה!")
+print("✓ קובץ CSV נוצר בהצלחה!")
 ```
 
-**הסבר:**
-- `open('students.csv', 'w')` - פותח קובץ לכתיבה
-- `newline=''` - מונע שורות ריקות בין רשומות
-- `encoding='utf-8'` - תמיכה בעברית
-- `csv.writer()` - יצירת אובייקט לכתיבת CSV
-- `writerows()` - כתיבת כל השורות בבת אחת
+**הסבר פרמטרים חשובים:**
+- `'w'` - מצב כתיבה (יוצר קובץ חדש או מחליף קיים)
+- `newline=''` - **חובה!** מונע שורות ריקות נוספות
+- `encoding='utf-8'` - **חובה לעברית!** תמיכה בתווים מיוחדים
+- `csv.writer()` - יוצר אובייקט לכתיבת CSV
+- `writerows()` - כותב מספר שורות בבת אחת
 
----
-
-## קריאת נתונים מקובץ CSV
-
-### שלב 1: קריאה בסיסית
+#### שיטה 3: יצירה עם DictWriter (מומלץ!)
 
 ```python
 import csv
 
-# קריאת קובץ CSV
+# נתונים כרשימה של מילונים
+students = [
+    {'id': 1, 'name': 'דני', 'age': 20, 'grade': 85, 'city': 'תל אביב'},
+    {'id': 2, 'name': 'שרה', 'age': 22, 'grade': 92, 'city': 'ירושלים'},
+    {'id': 3, 'name': 'יוסי', 'age': 21, 'grade': 78, 'city': 'חיפה'}
+]
+
+# הגדרת שמות העמודות
+fieldnames = ['id', 'name', 'age', 'grade', 'city']
+
+# כתיבה עם DictWriter
+with open('students_dict.csv', 'w', newline='', encoding='utf-8') as file:
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    
+    # כתיבת כותרות
+    writer.writeheader()
+    
+    # כתיבת הנתונים
+    writer.writerows(students)
+
+print("✓ קובץ נוצר עם DictWriter")
+```
+
+**יתרונות DictWriter:**
+- קוד יותר קריא ומובן
+- פחות סיכוי לטעויות בסדר העמודות
+- קל לתחזוקה ועדכון
+
+#### שיטה 4: יצירת CSV עם מפרידים שונים
+
+```python
+import csv
+
+data = [
+    ['שם', 'גיל', 'עיר'],
+    ['דני', '20', 'תל אביב'],
+    ['שרה', '22', 'ירושלים']
+]
+
+# CSV עם נקודה-פסיק (;) כמפריד
+with open('students_semicolon.csv', 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file, delimiter=';')
+    writer.writerows(data)
+
+# CSV עם TAB כמפריד (TSV)
+with open('students_tab.tsv', 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file, delimiter='\t')
+    writer.writerows(data)
+
+# CSV עם pipe (|) כמפריד
+with open('students_pipe.csv', 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file, delimiter='|')
+    writer.writerows(data)
+
+print("✓ נוצרו קבצים עם מפרידים שונים")
+```
+
+---
+
+### 3.2 קריאת CSV - שיטות שונות
+
+#### שיטה 1: קריאה בסיסית עם csv.reader
+
+```python
+import csv
+
+# קריאה פשוטה
 with open('students.csv', 'r', encoding='utf-8') as file:
     reader = csv.reader(file)
     
+    # קריאת כל השורות
     for row in reader:
         print(row)
 ```
@@ -121,10 +188,9 @@ with open('students.csv', 'r', encoding='utf-8') as file:
 ['id', 'name', 'age', 'grade', 'city']
 ['1', 'דני', '20', '85', 'תל אביב']
 ['2', 'שרה', '22', '92', 'ירושלים']
-...
 ```
 
-### שלב 2: קריאה עם DictReader (מומלץ)
+#### שיטה 2: קריאה עם DictReader (מומלץ!)
 
 ```python
 import csv
@@ -141,48 +207,526 @@ with open('students.csv', 'r', encoding='utf-8') as file:
 שם: דני, גיל: 20, ציון: 85
 שם: שרה, גיל: 22, ציון: 92
 שם: יוסי, גיל: 21, ציון: 78
-...
 ```
 
-**יתרון DictReader:**
-- גישה לערכים לפי שם העמודה במקום אינדקס
-- קוד קריא וברור יותר
+#### שיטה 3: קריאה לרשימה
+
+```python
+import csv
+
+# קריאת כל הקובץ לזיכרון
+with open('students.csv', 'r', encoding='utf-8') as file:
+    reader = csv.DictReader(file)
+    students = list(reader)
+
+# עכשיו אפשר לעבוד עם הנתונים
+print(f"יש {len(students)} תלמידים")
+print(f"התלמיד הראשון: {students[0]['name']}")
+print(f"התלמיד האחרון: {students[-1]['name']}")
+
+# גישה לתלמיד ספציפי
+for student in students:
+    if student['name'] == 'שרה':
+        print(f"מצאתי את שרה! ציון: {student['grade']}")
+```
+
+#### שיטה 4: קריאה עם דילוג על שורות
+
+```python
+import csv
+
+with open('students.csv', 'r', encoding='utf-8') as file:
+    reader = csv.reader(file)
+    
+    # דילוג על שורת הכותרות
+    next(reader)
+    
+    # קריאת שאר השורות
+    for row in reader:
+        print(f"תלמיד: {row[1]}, ציון: {row[3]}")
+```
+
+#### שיטה 5: קריאה עם טיפול בשגיאות
+
+```python
+import csv
+import os
+
+def read_csv_safe(filename):
+    """קריאת CSV בטוחה עם טיפול בשגיאות"""
+    
+    # בדיקה אם הקובץ קיים
+    if not os.path.exists(filename):
+        print(f"✗ שגיאה: הקובץ {filename} לא נמצא")
+        return None
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            data = list(reader)
+            print(f"✓ נקראו {len(data)} רשומות מ-{filename}")
+            return data
+    
+    except UnicodeDecodeError:
+        print(f"✗ שגיאת קידוד. נסה encoding='windows-1255' לעברית ישנה")
+        return None
+    
+    except csv.Error as e:
+        print(f"✗ שגיאת CSV: {e}")
+        return None
+    
+    except Exception as e:
+        print(f"✗ שגיאה כללית: {e}")
+        return None
+
+# שימוש
+students = read_csv_safe('students.csv')
+if students:
+    for student in students:
+        print(student['name'])
+```
+
+#### שיטה 6: קריאת CSV גדול (שורה-שורה)
+
+```python
+import csv
+
+def process_large_csv(filename):
+    """עיבוד קובץ גדול ללא טעינת כל הקובץ לזיכרון"""
+    
+    count = 0
+    total_grade = 0
+    
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        
+        for row in reader:
+            count += 1
+            total_grade += int(row['grade'])
+            
+            # עיבוד שורה-שורה
+            if int(row['grade']) > 90:
+                print(f"תלמיד מצטיין: {row['name']}")
+    
+    # חישוב ממוצע
+    if count > 0:
+        avg = total_grade / count
+        print(f"\nממוצע כללי: {avg:.2f}")
+        print(f"סה\"כ תלמידים: {count}")
+
+process_large_csv('students.csv')
+```
 
 ---
 
-## יצירת מסד נתונים SQLite
+### 3.3 כתיבה ועדכון CSV
 
-### שלב 1: חיבור למסד נתונים
+#### הוספת שורה אחת לקובץ קיים
 
 ```python
-import sqlite3
+import csv
 
-# יצירת חיבור (אם הקובץ לא קיים, הוא ייוצר)
-conn = sqlite3.connect('school.db')
+def add_student(filename, student_data):
+    """הוספת תלמיד חדש לקובץ CSV קיים"""
+    
+    with open(filename, 'a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(student_data)
+    
+    print(f"✓ תלמיד נוסף: {student_data[1]}")
 
-# יצירת cursor לביצוע פקודות
-cursor = conn.cursor()
-
-print("חיבור למסד הנתונים בוצע בהצלחה!")
-
-# סגירת החיבור
-conn.close()
+# דוגמה לשימוש
+add_student('students.csv', [6, 'אביגיל', 21, 90, 'רמת גן'])
+add_student('students.csv', [7, 'יעקב', 22, 87, 'פתח תקווה'])
 ```
 
-**הסבר:**
-- `sqlite3.connect()` - יוצר/פותח קובץ מסד נתונים
-- `cursor()` - מאפשר ביצוע פקודות SQL
-- `conn.close()` - סוגר את החיבור (חשוב!)
+**שימו לב:** מצב `'a'` (append) מוסיף לסוף הקובץ ללא מחיקת התוכן הקיים.
 
-### שלב 2: יצירת טבלה
+#### עדכון שורה קיימת
+
+```python
+import csv
+
+def update_student_grade(filename, student_id, new_grade):
+    """עדכון ציון של תלמיד לפי ID"""
+    
+    # קריאת כל הנתונים
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        students = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # עדכון הציון
+    updated = False
+    for student in students:
+        if student['id'] == str(student_id):
+            student['grade'] = str(new_grade)
+            updated = True
+            print(f"✓ ציון {student['name']} עודכן ל-{new_grade}")
+            break
+    
+    if not updated:
+        print(f"✗ תלמיד עם ID {student_id} לא נמצא")
+        return
+    
+    # כתיבה חזרה לקובץ
+    with open(filename, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(students)
+
+# שימוש
+update_student_grade('students.csv', 1, 95)  # עדכון ציון דני ל-95
+```
+
+#### מחיקת שורה
+
+```python
+import csv
+
+def delete_student(filename, student_id):
+    """מחיקת תלמיד לפי ID"""
+    
+    # קריאת הנתונים
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        students = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # סינון (הסרת התלמיד)
+    original_count = len(students)
+    students = [s for s in students if s['id'] != str(student_id)]
+    
+    if len(students) == original_count:
+        print(f"✗ תלמיד עם ID {student_id} לא נמצא")
+        return
+    
+    # כתיבה חזרה
+    with open(filename, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(students)
+    
+    print(f"✓ תלמיד נמחק. נותרו {len(students)} תלמידים")
+
+# שימוש
+delete_student('students.csv', 3)  # מחיקת יוסי
+```
+
+---
+
+### 3.4 פעולות מתקדמות על CSV
+
+#### מיון קובץ CSV
+
+```python
+import csv
+
+def sort_csv(filename, sort_by, reverse=False):
+    """מיון קובץ CSV לפי עמודה"""
+    
+    # קריאה
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        students = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # מיון
+    students.sort(key=lambda x: x[sort_by], reverse=reverse)
+    
+    # כתיבה
+    output_file = f'sorted_by_{sort_by}.csv'
+    with open(output_file, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(students)
+    
+    print(f"✓ הקובץ מוין לפי {sort_by} ונשמר ב-{output_file}")
+
+# דוגמאות שימוש
+sort_csv('students.csv', 'name')           # מיון לפי שם (א-ב)
+sort_csv('students.csv', 'grade', True)    # מיון לפי ציון (גבוה לנמוך)
+sort_csv('students.csv', 'age')            # מיון לפי גיל
+```
+
+#### מיון מספרי (חשוב!)
+
+```python
+import csv
+
+def sort_csv_numeric(filename, sort_by, reverse=False):
+    """מיון מספרי נכון"""
+    
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        students = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # המרה למספר לפני מיון
+    students.sort(key=lambda x: int(x[sort_by]), reverse=reverse)
+    
+    output_file = f'sorted_numeric_{sort_by}.csv'
+    with open(output_file, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(students)
+    
+    print(f"✓ מיון מספרי לפי {sort_by}")
+
+sort_csv_numeric('students.csv', 'grade', True)
+```
+
+#### סינון נתונים
+
+```python
+import csv
+
+def filter_csv(filename, condition_func, output_file):
+    """סינון CSV לפי תנאי"""
+    
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        students = list(reader)
+        fieldnames = reader.fieldnames
+    
+    # סינון
+    filtered = [s for s in students if condition_func(s)]
+    
+    # כתיבה
+    with open(output_file, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(filtered)
+    
+    print(f"✓ נמצאו {len(filtered)} רשומות מתוך {len(students)}")
+
+# דוגמאות סינון
+
+# תלמידים עם ציון מעל 85
+filter_csv('students.csv', 
+           lambda s: int(s['grade']) > 85,
+           'high_grades.csv')
+
+# תלמידים מתל אביב
+filter_csv('students.csv',
+           lambda s: s['city'] == 'תל אביב',
+           'tel_aviv_students.csv')
+
+# תלמידים צעירים מ-21
+filter_csv('students.csv',
+           lambda s: int(s['age']) < 21,
+           'young_students.csv')
+```
+
+---
+
+### 3.5 סינון וחיפוש בקבצי CSV
+
+#### חיפוש פשוט
+
+```python
+import csv
+
+def search_student(filename, search_term):
+    """חיפוש תלמיד לפי שם"""
+    
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        
+        found = False
+        for row in reader:
+            if search_term.lower() in row['name'].lower():
+                print(f"נמצא: {row['name']} - גיל {row['age']}, ציון {row['grade']}")
+                found = True
+        
+        if not found:
+            print(f"לא נמצאו תוצאות עבור '{search_term}'")
+
+# שימוש
+search_student('students.csv', 'דני')
+search_student('students.csv', 'שר')  # ימצא "שרה"
+```
+
+#### חיפוש מתקדם
+
+```python
+import csv
+
+def advanced_search(filename, **criteria):
+    """חיפוש לפי מספר קריטריונים"""
+    
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        
+        results = []
+        for row in reader:
+            match = True
+            
+            for key, value in criteria.items():
+                if key not in row:
+                    continue
+                
+                if isinstance(value, tuple):  # טווח (min, max)
+                    if not (int(value[0]) <= int(row[key]) <= int(value[1])):
+                        match = False
+                        break
+                elif str(row[key]) != str(value):
+                    match = False
+                    break
+            
+            if match:
+                results.append(row)
+        
+        return results
+
+# דוגמאות שימוש
+
+# תלמידים בני 20-22 עם ציון מעל 85
+results = advanced_search('students.csv', 
+                         age=(20, 22),
+                         grade=(85, 100))
+print(f"נמצאו {len(results)} תלמידים")
+
+# תלמידים מירושלים
+results = advanced_search('students.csv', city='ירושלים')
+for r in results:
+    print(r['name'])
+```
+
+---
+
+### 3.6 עבודה עם מספר קבצי CSV
+
+#### איחוד שני קבצי CSV
+
+```python
+import csv
+
+def merge_csv_files(file1, file2, output_file):
+    """איחוד שני קבצי CSV לקובץ אחד"""
+    
+    all_data = []
+    fieldnames = None
+    
+    # קריאת קובץ ראשון
+    with open(file1, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        all_data.extend(list(reader))
+    
+    # קריאת קובץ שני
+    with open(file2, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        all_data.extend(list(reader))
+    
+    # כתיבת הקובץ המאוחד
+    with open(output_file, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(all_data)
+    
+    print(f"✓ אוחדו {len(all_data)} רשומות ל-{output_file}")
+
+# שימוש
+merge_csv_files('students.csv', 'new_students.csv', 'all_students.csv')
+```
+
+#### השוואה בין שני קבצי CSV
+
+```python
+import csv
+
+def compare_csv_files(file1, file2, key_field='id'):
+    """השוואה בין שני קבצי CSV"""
+    
+    # קריאת קבצים
+    with open(file1, 'r', encoding='utf-8') as f:
+        data1 = {row[key_field]: row for row in csv.DictReader(f)}
+    
+    with open(file2, 'r', encoding='utf-8') as f:
+        data2 = {row[key_field]: row for row in csv.DictReader(f)}
+    
+    # מציאת הבדלים
+    only_in_file1 = set(data1.keys()) - set(data2.keys())
+    only_in_file2 = set(data2.keys()) - set(data1.keys())
+    common = set(data1.keys()) & set(data2.keys())
+    
+    print(f"רק ב-{file1}: {len(only_in_file1)}")
+    print(f"רק ב-{file2}: {len(only_in_file2)}")
+    print(f"משותף: {len(common)}")
+    
+    # בדיקת שינויים ברשומות משותפות
+    changed = []
+    for key in common:
+        if data1[key] != data2[key]:
+            changed.append(key)
+    
+    print(f"רשומות ששונו: {len(changed)}")
+    
+    return {
+        'only_in_file1': only_in_file1,
+        'only_in_file2': only_in_file2,
+        'changed': changed
+    }
+
+# שימוש
+diff = compare_csv_files('students_old.csv', 'students_new.csv')
+```
+
+#### חיבור קבצי CSV (JOIN)
+
+```python
+import csv
+
+def join_csv_files(file1, file2, key1, key2, output_file):
+    """חיבור שני קבצי CSV כמו JOIN ב-SQL"""
+    
+    # קריאת הקובץ הראשון
+    with open(file1, 'r', encoding='utf-8') as f:
+        reader1 = csv.DictReader(f)
+        data1 = {row[key1]: row for row in reader1}
+    
+    # קריאת הקובץ השני וחיבור
+    results = []
+    with open(file2, 'r', encoding='utf-8') as f:
+        reader2 = csv.DictReader(f)
+        
+        for row2 in reader2:
+            if row2[key2] in data1:
+                # מיזוג שני השורות
+                merged = {**data1[row2[key2]], **row2}
+                results.append(merged)
+    
+    # כתיבת התוצאה
+    if results:
+        fieldnames = results[0].keys()
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(results)
+        
+        print(f"✓ חובר {len(results)} רשומות")
+
+# דוגמה: חיבור תלמידים עם ציונים
+join_csv_files('students.csv', 'grades.csv', 'id', 'student_id', 'full_data.csv')
+```
+
+---
+
+## אינטגרציה עם SQLite
+
+כעת נלמד איך להעביר את הנתונים מקבצי CSV למסד נתונים SQLite ולהיפך.
+
+### יצירת מסד נתונים SQLite בסיסי
 
 ```python
 import sqlite3
 
+# יצירת/חיבור למסד נתונים
 conn = sqlite3.connect('school.db')
 cursor = conn.cursor()
 
-# יצירת טבלת תלמידים
+# יצירת טבלה
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS students (
         id INTEGER PRIMARY KEY,
@@ -193,20 +737,10 @@ cursor.execute('''
     )
 ''')
 
-# שמירת השינויים
 conn.commit()
-
-print("טבלה נוצרה בהצלחה!")
 conn.close()
+print("✓ מסד נתונים נוצר בהצלחה")
 ```
-
-**הסבר על סוגי נתונים ב-SQLite:**
-- `INTEGER` - מספרים שלמים
-- `TEXT` - טקסט
-- `REAL` - מספרים עשרוניים
-- `BLOB` - נתונים בינאריים
-- `PRIMARY KEY` - מפתח ראשי (ייחודי)
-- `NOT NULL` - שדה חובה
 
 ---
 
@@ -528,298 +1062,500 @@ export_to_csv('school.db',
 
 ---
 
-## תרגילים מעשיים
+## תרגילים מעשיים - התמקדות ב-CSV
 
-### תרגיל 1: מערכת ניהול ספרייה
-
-```python
-import csv
-import sqlite3
-
-# 1. צור קובץ CSV עם ספרים
-books_data = [
-    ['id', 'title', 'author', 'year', 'genre'],
-    [1, 'הארי פוטר', 'ג.ק. רולינג', 1997, 'פנטזיה'],
-    [2, '1984', 'ג\'ורג\' אורוול', 1949, 'מדע בדיוני'],
-    [3, 'גאווה ודעה קדומה', 'ג\'יין אוסטין', 1813, 'רומנטיקה'],
-    [4, 'הארי פוטר 2', 'ג.ק. רולינג', 1998, 'פנטזיה']
-]
-
-with open('books.csv', 'w', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    writer.writerows(books_data)
-
-# 2. יצירת מסד נתונים והכנסת הספרים
-conn = sqlite3.connect('library.db')
-cursor = conn.cursor()
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS books (
-        id INTEGER PRIMARY KEY,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        year INTEGER,
-        genre TEXT
-    )
-''')
-
-with open('books.csv', 'r', encoding='utf-8') as file:
-    reader = csv.DictReader(file)
-    for row in reader:
-        cursor.execute('''
-            INSERT OR REPLACE INTO books (id, title, author, year, genre)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (row['id'], row['title'], row['author'], row['year'], row['genre']))
-
-conn.commit()
-
-# 3. שאילתות שונות
-print("=== כל הספרים ===")
-cursor.execute('SELECT title, author FROM books')
-for title, author in cursor.fetchall():
-    print(f"- {title} מאת {author}")
-
-print("\n=== ספרי פנטזיה ===")
-cursor.execute('SELECT title FROM books WHERE genre = "פנטזיה"')
-for (title,) in cursor.fetchall():
-    print(f"- {title}")
-
-print("\n=== ספרים לפי מחבר ===")
-cursor.execute('SELECT author, COUNT(*) FROM books GROUP BY author')
-for author, count in cursor.fetchall():
-    print(f"{author}: {count} ספרים")
-
-conn.close()
-```
-
-### תרגיל 2: מערכת עובדים ומשכורות
+### תרגיל 1: מערכת ניהול מוצרים בחנות
 
 ```python
 import csv
-import sqlite3
-
-# יצירת קובץ עובדים
-employees_data = [
-    ['id', 'name', 'department', 'salary', 'hire_date'],
-    [1, 'יוסי כהן', 'IT', 15000, '2020-01-15'],
-    [2, 'שרה לוי', 'HR', 12000, '2019-03-20'],
-    [3, 'דוד ישראלי', 'IT', 18000, '2018-06-10'],
-    [4, 'רחל אברהם', 'Sales', 14000, '2021-02-01'],
-    [5, 'משה דוד', 'IT', 16000, '2020-08-15']
-]
-
-with open('employees.csv', 'w', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    writer.writerows(employees_data)
-
-# יצירת מסד נתונים
-conn = sqlite3.connect('company.db')
-cursor = conn.cursor()
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS employees (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        department TEXT,
-        salary INTEGER,
-        hire_date TEXT
-    )
-''')
-
-# ייבוא נתונים
-with open('employees.csv', 'r', encoding='utf-8') as file:
-    reader = csv.DictReader(file)
-    for row in reader:
-        cursor.execute('''
-            INSERT OR REPLACE INTO employees VALUES (?, ?, ?, ?, ?)
-        ''', (row['id'], row['name'], row['department'], 
-              row['salary'], row['hire_date']))
-
-conn.commit()
-
-# שאילתות מעניינות
-print("=== משכורת ממוצעת לפי מחלקה ===")
-cursor.execute('''
-    SELECT department, AVG(salary) as avg_salary 
-    FROM employees 
-    GROUP BY department
-''')
-for dept, avg_sal in cursor.fetchall():
-    print(f"{dept}: ₪{avg_sal:,.0f}")
-
-print("\n=== עובדי IT ===")
-cursor.execute('SELECT name, salary FROM employees WHERE department = "IT"')
-for name, salary in cursor.fetchall():
-    print(f"{name}: ₪{salary:,}")
-
-print("\n=== משכורת מקסימלית ומינימלית ===")
-cursor.execute('SELECT MAX(salary), MIN(salary) FROM employees')
-max_sal, min_sal = cursor.fetchone()
-print(f"מקסימום: ₪{max_sal:,}")
-print(f"מינימום: ₪{min_sal:,}")
-
-conn.close()
-```
-
-### תרגיל 3: פרויקט מלא - מערכת ניהול סטודנטים
-
-```python
-import csv
-import sqlite3
 from datetime import datetime
 
-class StudentManagementSystem:
-    """
-    מערכת ניהול סטודנטים עם SQLite
-    """
+class ProductManager:
+    """מערכת ניהול מוצרים עם CSV"""
     
-    def __init__(self, db_file='students_system.db'):
-        self.db_file = db_file
-        self.create_table()
+    def __init__(self, filename='products.csv'):
+        self.filename = filename
+        self.fieldnames = ['id', 'name', 'price', 'quantity', 'category', 'last_updated']
+        self.create_file_if_not_exists()
     
-    def create_table(self):
-        """יצירת טבלת סטודנטים"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS students (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                age INTEGER,
-                grade REAL,
-                city TEXT,
-                enrollment_date TEXT
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-    
-    def import_from_csv(self, csv_file):
-        """ייבוא סטודנטים מקובץ CSV"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        
+    def create_file_if_not_exists(self):
+        """יצירת קובץ אם לא קיים"""
         try:
-            with open(csv_file, 'r', encoding='utf-8') as file:
-                reader = csv.DictReader(file)
-                count = 0
-                
-                for row in reader:
-                    cursor.execute('''
-                        INSERT INTO students (name, age, grade, city, enrollment_date)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (row.get('name'), row.get('age'), row.get('grade'),
-                          row.get('city'), row.get('enrollment_date', datetime.now().strftime('%Y-%m-%d'))))
-                    count += 1
-                
-                conn.commit()
-                print(f"✓ יובאו {count} סטודנטים בהצלחה")
-        except Exception as e:
-            print(f"✗ שגיאה בייבוא: {e}")
-        finally:
-            conn.close()
+            with open(self.filename, 'r', encoding='utf-8'):
+                pass
+        except FileNotFoundError:
+            with open(self.filename, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+                writer.writeheader()
+            print(f"✓ נוצר קובץ {self.filename}")
     
-    def add_student(self, name, age, grade, city):
-        """הוספת סטודנט חדש"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
+    def add_product(self, name, price, quantity, category):
+        """הוספת מוצר חדש"""
+        # קבלת ID הבא
+        products = self.get_all_products()
+        next_id = max([int(p['id']) for p in products], default=0) + 1
         
-        cursor.execute('''
-            INSERT INTO students (name, age, grade, city, enrollment_date)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (name, age, grade, city, datetime.now().strftime('%Y-%m-%d')))
+        # יצירת מוצר חדש
+        product = {
+            'id': next_id,
+            'name': name,
+            'price': price,
+            'quantity': quantity,
+            'category': category,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
         
-        conn.commit()
-        print(f"✓ הסטודנט {name} נוסף בהצלחה")
-        conn.close()
+        # הוספה לקובץ
+        with open(self.filename, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+            writer.writerow(product)
+        
+        print(f"✓ מוצר '{name}' נוסף בהצלחה (ID: {next_id})")
+        return next_id
     
-    def get_all_students(self):
-        """הצגת כל הסטודנטים"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM students')
-        students = cursor.fetchall()
-        
-        print("\n=== רשימת כל הסטודנטים ===")
-        for student in students:
-            print(f"ID: {student[0]}, שם: {student[1]}, גיל: {student[2]}, "
-                  f"ציון: {student[3]}, עיר: {student[4]}")
-        
-        conn.close()
-        return students
+    def get_all_products(self):
+        """קבלת כל המוצרים"""
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                return list(reader)
+        except FileNotFoundError:
+            return []
     
-    def search_by_city(self, city):
-        """חיפוש סטודנטים לפי עיר"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
+    def search_by_name(self, search_term):
+        """חיפוש מוצר לפי שם"""
+        products = self.get_all_products()
+        results = [p for p in products if search_term.lower() in p['name'].lower()]
         
-        cursor.execute('SELECT * FROM students WHERE city = ?', (city,))
-        students = cursor.fetchall()
+        print(f"\n=== נמצאו {len(results)} תוצאות עבור '{search_term}' ===")
+        for p in results:
+            print(f"ID: {p['id']}, {p['name']} - ₪{p['price']} ({p['quantity']} במלאי)")
         
-        print(f"\n=== סטודנטים מ{city} ===")
-        for student in students:
-            print(f"{student[1]} - ציון: {student[3]}")
-        
-        conn.close()
-        return students
+        return results
     
-    def get_statistics(self):
-        """סטטיסטיקות כלליות"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
+    def search_by_category(self, category):
+        """חיפוש לפי קטגוריה"""
+        products = self.get_all_products()
+        results = [p for p in products if p['category'].lower() == category.lower()]
         
-        cursor.execute('SELECT COUNT(*), AVG(grade), MAX(grade), MIN(grade) FROM students')
-        count, avg, max_g, min_g = cursor.fetchone()
+        print(f"\n=== {len(results)} מוצרים בקטגוריה '{category}' ===")
+        for p in results:
+            print(f"{p['name']}: ₪{p['price']}")
         
-        print("\n=== סטטיסטיקות ===")
-        print(f"מספר סטודנטים: {count}")
-        print(f"ממוצע ציונים: {avg:.2f}")
-        print(f"ציון מקסימלי: {max_g}")
-        print(f"ציון מינימלי: {min_g}")
-        
-        conn.close()
+        return results
     
-    def export_to_csv(self, output_file='students_export.csv'):
-        """ייצוא כל הסטודנטים ל-CSV"""
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
+    def update_quantity(self, product_id, new_quantity):
+        """עדכון כמות במלאי"""
+        products = self.get_all_products()
         
-        cursor.execute('SELECT * FROM students')
-        students = cursor.fetchall()
-        column_names = [desc[0] for desc in cursor.description]
+        for p in products:
+            if p['id'] == str(product_id):
+                p['quantity'] = str(new_quantity)
+                p['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                break
         
-        with open(output_file, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(column_names)
-            writer.writerows(students)
+        # שמירה חזרה
+        with open(self.filename, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+            writer.writeheader()
+            writer.writerows(products)
         
-        print(f"✓ {len(students)} סטודנטים יוצאו ל-{output_file}")
-        conn.close()
+        print(f"✓ כמות עודכנה ל-{new_quantity}")
+    
+    def get_low_stock(self, threshold=5):
+        """מציאת מוצרים עם מלאי נמוך"""
+        products = self.get_all_products()
+        low_stock = [p for p in products if int(p['quantity']) < threshold]
+        
+        print(f"\n=== מוצרים עם מלאי מתחת ל-{threshold} ===")
+        for p in low_stock:
+            print(f"⚠️  {p['name']}: רק {p['quantity']} במלאי")
+        
+        return low_stock
+    
+    def generate_report(self):
+        """יצירת דוח מלאי"""
+        products = self.get_all_products()
+        
+        if not products:
+            print("אין מוצרים במערכת")
+            return
+        
+        # חישובים
+        total_products = len(products)
+        total_value = sum(float(p['price']) * int(p['quantity']) for p in products)
+        categories = {}
+        
+        for p in products:
+            cat = p['category']
+            if cat not in categories:
+                categories[cat] = {'count': 0, 'value': 0}
+            categories[cat]['count'] += 1
+            categories[cat]['value'] += float(p['price']) * int(p['quantity'])
+        
+        # הדפסת דוח
+        print("\n" + "="*50)
+        print("           דוח מלאי מפורט")
+        print("="*50)
+        print(f"סה\"כ מוצרים: {total_products}")
+        print(f"שווי כולל: ₪{total_value:,.2f}")
+        print(f"\nפילוח לפי קטגוריות:")
+        for cat, data in categories.items():
+            print(f"  {cat}: {data['count']} מוצרים (שווי: ₪{data['value']:,.2f})")
+        print("="*50)
+    
+    def export_category(self, category, output_file):
+        """ייצוא קטגוריה ספציפית לקובץ נפרד"""
+        products = self.search_by_category(category)
+        
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+            writer.writeheader()
+            writer.writerows(products)
+        
+        print(f"✓ {len(products)} מוצרים יוצאו ל-{output_file}")
 
-# שימוש במערכת
+# דוגמת שימוש
 if __name__ == "__main__":
-    # יצירת המערכת
-    system = StudentManagementSystem()
+    manager = ProductManager()
     
-    # הוספת סטודנטים
-    system.add_student('אלי כהן', 21, 88, 'תל אביב')
-    system.add_student('מיכל לוי', 22, 92, 'חיפה')
-    system.add_student('דני ישראלי', 20, 85, 'תל אביב')
+    # הוספת מוצרים
+    manager.add_product('לפטופ Dell', 3500, 10, 'מחשבים')
+    manager.add_product('עכבר Logitech', 80, 50, 'אביזרים')
+    manager.add_product('מקלדת מכנית', 350, 25, 'אביזרים')
+    manager.add_product('מסך 27 אינץ', 1200, 3, 'מסכים')
+    manager.add_product('כבל HDMI', 45, 100, 'כבלים')
     
-    # הצגת כל הסטודנטים
-    system.get_all_students()
+    # חיפושים
+    manager.search_by_name('Dell')
+    manager.search_by_category('אביזרים')
     
-    # חיפוש לפי עיר
-    system.search_by_city('תל אביב')
+    # מציאת מלאי נמוך
+    manager.get_low_stock(10)
+    
+    # עדכון מלאי
+    manager.update_quantity(4, 15)
+    
+    # דוח
+    manager.generate_report()
+    
+    # ייצוא
+    manager.export_category('אביזרים', 'accessories.csv')
+```
+
+### תרגיל 2: מערכת רישום נוכחות
+
+```python
+import csv
+from datetime import datetime, date
+
+class AttendanceSystem:
+    """מערכת רישום נוכחות"""
+    
+    def __init__(self, students_file='students.csv', attendance_file='attendance.csv'):
+        self.students_file = students_file
+        self.attendance_file = attendance_file
+        self.init_attendance_file()
+    
+    def init_attendance_file(self):
+        """יצירת קובץ נוכחות אם לא קיים"""
+        try:
+            with open(self.attendance_file, 'r', encoding='utf-8'):
+                pass
+        except FileNotFoundError:
+            with open(self.attendance_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['date', 'student_id', 'student_name', 'status', 'time'])
+            print(f"✓ נוצר קובץ נוכחות: {self.attendance_file}")
+    
+    def mark_attendance(self, student_id, student_name, status='נוכח'):
+        """רישום נוכחות"""
+        today = date.today().strftime('%Y-%m-%d')
+        time_now = datetime.now().strftime('%H:%M:%S')
+        
+        # בדיקה אם כבר נרשם היום
+        if self.check_if_marked(student_id, today):
+            print(f"⚠️  {student_name} כבר נרשם/ה היום")
+            return False
+        
+        # רישום
+        with open(self.attendance_file, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([today, student_id, student_name, status, time_now])
+        
+        print(f"✓ {student_name} נרשם/ה כ{status} בשעה {time_now}")
+        return True
+    
+    def check_if_marked(self, student_id, date_str):
+        """בדיקה אם תלמיד כבר נרשם בתאריך מסוים"""
+        try:
+            with open(self.attendance_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['student_id'] == str(student_id) and row['date'] == date_str:
+                        return True
+        except FileNotFoundError:
+            pass
+        return False
+    
+    def get_daily_report(self, date_str=None):
+        """דוח נוכחות יומי"""
+        if date_str is None:
+            date_str = date.today().strftime('%Y-%m-%d')
+        
+        with open(self.attendance_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            daily = [r for r in reader if r['date'] == date_str]
+        
+        print(f"\n=== דוח נוכחות ליום {date_str} ===")
+        present = [r for r in daily if r['status'] == 'נוכח']
+        absent = [r for r in daily if r['status'] == 'חסר']
+        
+        print(f"נוכחים: {len(present)}")
+        print(f"חסרים: {len(absent)}")
+        
+        if present:
+            print("\nרשימת נוכחים:")
+            for r in present:
+                print(f"  - {r['student_name']} (הגיע/ה בשעה {r['time']})")
+        
+        if absent:
+            print("\nרשימת חסרים:")
+            for r in absent:
+                print(f"  - {r['student_name']}")
+        
+        return daily
+    
+    def get_student_attendance(self, student_id):
+        """דוח נוכחות לתלמיד ספציפי"""
+        with open(self.attendance_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            records = [r for r in reader if r['student_id'] == str(student_id)]
+        
+        if not records:
+            print(f"לא נמצאו רשומות עבור תלמיד {student_id}")
+            return []
+        
+        student_name = records[0]['student_name']
+        present = len([r for r in records if r['status'] == 'נוכח'])
+        total = len(records)
+        percentage = (present / total * 100) if total > 0 else 0
+        
+        print(f"\n=== דוח נוכחות: {student_name} ===")
+        print(f"ימי נוכחות: {present}/{total} ({percentage:.1f}%)")
+        
+        return records
+    
+    def export_monthly_report(self, year, month):
+        """ייצוא דוח חודשי"""
+        with open(self.attendance_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            monthly = [r for r in reader 
+                      if r['date'].startswith(f"{year}-{month:02d}")]
+        
+        output_file = f'attendance_{year}_{month:02d}.csv'
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            if monthly:
+                writer = csv.DictWriter(f, fieldnames=monthly[0].keys())
+                writer.writeheader()
+                writer.writerows(monthly)
+        
+        print(f"✓ דוח חודשי יוצא ל-{output_file} ({len(monthly)} רשומות)")
+
+# דוגמת שימוש
+if __name__ == "__main__":
+    system = AttendanceSystem()
+    
+    # רישום נוכחות
+    system.mark_attendance(1, 'דני כהן', 'נוכח')
+    system.mark_attendance(2, 'שרה לוי', 'נוכח')
+    system.mark_attendance(3, 'יוסי ישראלי', 'חסר')
+    system.mark_attendance(4, 'רחל אברהם', 'נוכח')
+    
+    # דוח יומי
+    system.get_daily_report()
+    
+    # דוח לתלמיד
+    system.get_student_attendance(1)
+```
+
+### תרגיל 3: ניתוח ועיבוד קובץ CSV גדול
+
+```python
+import csv
+from collections import defaultdict, Counter
+
+class CSVAnalyzer:
+    """כלי לניתוח קבצי CSV גדולים"""
+    
+    def __init__(self, filename):
+        self.filename = filename
+    
+    def analyze_structure(self):
+        """ניתוח מבנה הקובץ"""
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            
+            # קריאת שורה ראשונה
+            first_row = next(reader, None)
+            if not first_row:
+                print("הקובץ ריק")
+                return
+            
+            # ספירת שורות
+            row_count = 1
+            for row in reader:
+                row_count += 1
+            
+            print(f"\n=== ניתוח מבנה: {self.filename} ===")
+            print(f"מספר עמודות: {len(first_row)}")
+            print(f"מספר שורות: {row_count}")
+            print(f"שמות עמודות: {', '.join(first_row.keys())}")
+    
+    def column_statistics(self, column_name):
+        """סטטיסטיקות עבור עמודה"""
+        values = []
+        
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            
+            for row in reader:
+                if column_name in row and row[column_name]:
+                    values.append(row[column_name])
+        
+        if not values:
+            print(f"לא נמצאו ערכים בעמודה '{column_name}'")
+            return
+        
+        print(f"\n=== סטטיסטיקות עבור '{column_name}' ===")
+        print(f"סה\"כ ערכים: {len(values)}")
+        
+        # ניסיון לזהות אם זה מספר
+        try:
+            numeric_values = [float(v) for v in values]
+            print(f"סוג: מספרי")
+            print(f"ממוצע: {sum(numeric_values) / len(numeric_values):.2f}")
+            print(f"מינימום: {min(numeric_values)}")
+            print(f"מקסימום: {max(numeric_values)}")
+        except ValueError:
+            # זה טקסט
+            print(f"סוג: טקסט")
+            print(f"ערכים ייחודיים: {len(set(values))}")
+            
+            # הצגת הערכים הנפוצים ביותר
+            counter = Counter(values)
+            print(f"הערכים הנפוצים ביותר:")
+            for value, count in counter.most_common(5):
+                print(f"  {value}: {count} פעמים")
+    
+    def group_by(self, group_column, aggregate_column, operation='count'):
+        """קיבוץ נתונים לפי עמודה"""
+        groups = defaultdict(list)
+        
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            
+            for row in reader:
+                key = row[group_column]
+                if aggregate_column:
+                    groups[key].append(row[aggregate_column])
+                else:
+                    groups[key].append(1)
+        
+        print(f"\n=== קיבוץ לפי '{group_column}' ===")
+        
+        for key, values in sorted(groups.items()):
+            if operation == 'count':
+                print(f"{key}: {len(values)}")
+            elif operation == 'sum' and aggregate_column:
+                try:
+                    total = sum(float(v) for v in values if v)
+                    print(f"{key}: {total:.2f}")
+                except ValueError:
+                    print(f"{key}: לא ניתן לחשב סכום")
+            elif operation == 'avg' and aggregate_column:
+                try:
+                    avg = sum(float(v) for v in values if v) / len(values)
+                    print(f"{key}: {avg:.2f}")
+                except ValueError:
+                    print(f"{key}: לא ניתן לחשב ממוצע")
+    
+    def find_duplicates(self, column_name):
+        """מציאת ערכים כפולים"""
+        values = defaultdict(list)
+        
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            
+            for i, row in enumerate(reader, 1):
+                value = row[column_name]
+                values[value].append(i)
+        
+        # סינון רק ערכים שחוזרים
+        duplicates = {k: v for k, v in values.items() if len(v) > 1}
+        
+        if duplicates:
+            print(f"\n=== נמצאו {len(duplicates)} ערכים כפולים ב-'{column_name}' ===")
+            for value, rows in list(duplicates.items())[:10]:
+                print(f"{value}: מופיע {len(rows)} פעמים (שורות: {', '.join(map(str, rows))})")
+        else:
+            print(f"✓ לא נמצאו ערכים כפולים ב-'{column_name}'")
+    
+    def clean_and_export(self, output_file, remove_duplicates=False, sort_by=None):
+        """ניקוי וייצוא הקובץ"""
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            data = list(reader)
+            fieldnames = reader.fieldnames
+        
+        # הסרת שורות ריקות
+        data = [row for row in data if any(row.values())]
+        
+        # הסרת כפילויות
+        if remove_duplicates:
+            seen = set()
+            unique_data = []
+            for row in data:
+                row_tuple = tuple(row.items())
+                if row_tuple not in seen:
+                    seen.add(row_tuple)
+                    unique_data.append(row)
+            data = unique_data
+        
+        # מיון
+        if sort_by and sort_by in fieldnames:
+            try:
+                data.sort(key=lambda x: float(x[sort_by]))
+            except ValueError:
+                data.sort(key=lambda x: x[sort_by])
+        
+        # כתיבה
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(data)
+        
+        print(f"✓ קובץ מנוקה נשמר ב-{output_file} ({len(data)} רשומות)")
+
+# דוגמת שימוש
+if __name__ == "__main__":
+    analyzer = CSVAnalyzer('students.csv')
+    
+    # ניתוח מבנה
+    analyzer.analyze_structure()
     
     # סטטיסטיקות
-    system.get_statistics()
+    analyzer.column_statistics('grade')
+    analyzer.column_statistics('city')
     
-    # ייצוא ל-CSV
-    system.export_to_csv()
+    # קיבוץ
+    analyzer.group_by('city', 'grade', 'avg')
+    
+    # מציאת כפילויות
+    analyzer.find_duplicates('name')
+    
+    # ניקוי וייצוא
+    analyzer.clean_and_export('students_clean.csv', remove_duplicates=True, sort_by='grade')
 ```
 
 ---
